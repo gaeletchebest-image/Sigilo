@@ -34,11 +34,13 @@ public class PlayerScr : MonoBehaviour
     Rigidbody rb;
     GameController gc;
     ControlsController controls;
+    MissionManager mission;
 
     private void Start()
     {
         gc = GameController.Instance;
         controls = gc.GetControlsController();
+        mission = MissionManager.Instance;
         rb = GetComponent<Rigidbody>();
 
         Camera childCamera = cameraTransform.GetComponentInChildren<Camera>();
@@ -61,12 +63,21 @@ public class PlayerScr : MonoBehaviour
         currentCameraDistance = cameraDistance;
         camera.localPosition = new Vector3(cameraShoulderOffset, 0f, -currentCameraDistance);
 
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
+        if (mission == null || mission.IsPlaying)
+        {
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+        }
+        else
+        {
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+        }
     }
 
     private void Update()
     {
+        if (mission != null && !mission.IsPlaying) return;
         if (!movementLocked) ReadLookInput();
     }
 
@@ -86,6 +97,7 @@ public class PlayerScr : MonoBehaviour
 
     private void FixedUpdate()
     {
+        if (mission != null && !mission.IsPlaying) return;
         if (!movementLocked) Move();
     }
 

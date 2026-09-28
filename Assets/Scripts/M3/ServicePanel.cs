@@ -36,6 +36,7 @@ public sealed class ServicePanel : ContextualInteractable
 
         ActivationCount++;
         availableAt = Time.time + cooldownSeconds;
+        ProceduralAudioFeedback.Instance?.PlayBuzzer();
         if (buzzer != null) buzzer.Ring();
         if (respondingGuard != null &&
             Vector3.Distance(respondingGuard.transform.position, buzzer != null ? buzzer.transform.position : transform.position) <= hearingRange)
