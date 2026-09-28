@@ -10,6 +10,7 @@ public sealed class GuardBrain : MonoBehaviour
     [SerializeField, Min(0.1f)] private float searchDuration = 4f;
 
     private Transform player;
+    private PlayerStealthState playerStealth;
     [SerializeField] private State state;
     private float searchUntil;
     [SerializeField] private Vector3 lastKnown;
@@ -31,7 +32,11 @@ public sealed class GuardBrain : MonoBehaviour
     private void Start()
     {
         GameObject found = GameObject.Find("Player");
-        if (found != null) player = found.transform;
+        if (found != null)
+        {
+            player = found.transform;
+            playerStealth = found.GetComponent<PlayerStealthState>();
+        }
         if (perception != null) perception.Initialize(player);
         if (navigation != null) navigation.BeginPatrol();
     }
@@ -52,7 +57,8 @@ public sealed class GuardBrain : MonoBehaviour
             if (visible || near)
             {
                 navigation.SetDestination(lastKnown);
-                if (Vector3.Distance(transform.position, player.position) <= 1.15f)
+                if ((playerStealth == null || !playerStealth.IsHidden) &&
+                    Vector3.Distance(transform.position, player.position) <= 1.15f)
                 {
                     gameMessage = "CAPTURADO — reiniciá la escena para volver a intentar";
                     messageUntil = Time.time + 1000f;

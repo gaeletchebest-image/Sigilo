@@ -6,19 +6,26 @@ public sealed class GuardPerception : MonoBehaviour
     [SerializeField, Range(1f, 180f)] private float visionAngle = 100f;
     [SerializeField] private LayerMask occluders = ~0;
     private Transform player;
+    private PlayerStealthState playerStealth;
     private bool nearPlayer;
 
     public float VisionRange => visionRange;
     public float VisionAngle => visionAngle;
     public float ProximityRadius => 2f;
-    public bool IsNear => nearPlayer && HasClearLine();
+    public bool IsNear => !IsPlayerHidden && nearPlayer && HasClearLine();
 
-    public void Initialize(Transform target) => player = target;
+    private bool IsPlayerHidden => playerStealth != null && playerStealth.IsHidden;
+
+    public void Initialize(Transform target)
+    {
+        player = target;
+        playerStealth = target != null ? target.GetComponent<PlayerStealthState>() : null;
+    }
     public void SetProximity(bool value) => nearPlayer = value;
 
     public bool CanSeePlayer()
     {
-        if (player == null) return false;
+        if (player == null || IsPlayerHidden) return false;
         Vector3 delta = player.position + Vector3.up - (transform.position + Vector3.up * 1.5f);
         return delta.magnitude <= visionRange &&
                Vector3.Angle(transform.forward, delta) <= visionAngle * .5f &&
@@ -27,7 +34,7 @@ public sealed class GuardPerception : MonoBehaviour
 
     public bool HasClearLine()
     {
-        if (player == null) return false;
+        if (player == null || IsPlayerHidden) return false;
         Vector3 origin = transform.position + Vector3.up * 1.5f;
         Vector3 target = player.position + Vector3.up;
         Vector3 delta = target - origin;

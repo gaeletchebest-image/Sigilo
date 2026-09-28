@@ -27,6 +27,8 @@ public class PlayerScr : MonoBehaviour
     private float playerRotationY;
     private float currentCameraDistance;
     private Transform camera;
+    private Transform hideoutCameraAnchor;
+    private bool movementLocked;
     private readonly RaycastHit[] cameraCollisionHits = new RaycastHit[8];
 
     Rigidbody rb;
@@ -65,18 +67,33 @@ public class PlayerScr : MonoBehaviour
 
     private void Update()
     {
-        ReadLookInput();
+        if (!movementLocked) ReadLookInput();
     }
 
     private void LateUpdate()
     {
+        if (hideoutCameraAnchor != null)
+        {
+            cameraTransform.position = hideoutCameraAnchor.position;
+            cameraTransform.rotation = hideoutCameraAnchor.rotation;
+            camera.localPosition = Vector3.zero;
+            return;
+        }
+
         UpdateCameraOrbit();
         UpdateCameraCollision();
     }
 
     private void FixedUpdate()
     {
-        Move();
+        if (!movementLocked) Move();
+    }
+
+    public void SetShelterMode(bool hidden, Transform cameraAnchor = null)
+    {
+        movementLocked = hidden;
+        hideoutCameraAnchor = hidden ? cameraAnchor : null;
+        if (!hidden) currentCameraDistance = cameraDistance;
     }
 
     private void Move()

@@ -27,6 +27,8 @@ public class ControlsController : MonoBehaviour
         private set { _mouseDelta = value; }
     }
 
+    public bool InteractPressedThisFrame => isa != null && isa.Player.Interact.WasPressedThisFrame();
+
     private void Awake() => EnsureInputActions();
 
     private void OnEnable()

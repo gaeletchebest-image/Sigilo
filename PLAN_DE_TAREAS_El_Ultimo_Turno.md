@@ -67,11 +67,17 @@
 **Meta del hito:** el jugador puede cortar una persecución, recuperar el control y seguir jugando.
 
 - [ ] **T19 [MUST] Incorporar entrada contextual de interacción.** Añadir tecla de interacción y selección estable de un objeto cercano. **Aceptación:** una pulsación activa una sola vez un objeto de prueba dentro del alcance; fuera del alcance no hace nada; la selección no alterna sin control entre dos objetos cercanos.
-- [ ] **T20 [MUST] Crear el armario grisbox.** Permitir entrada y salida, inmovilizar al jugador dentro y adaptar cámara. **Aceptación:** entrar y salir diez veces consecutivas conserva posición y controles; dentro no se puede caminar ni interactuar con otros objetos.
-- [ ] **T21 [MUST] Integrar ocultamiento con percepción y captura.** Excluir al jugador oculto de los dos sensores y del contacto de derrota. **Aceptación:** un guardia junto al armario no acumula sospecha ni captura al jugador dentro; al salir, vuelve a percibirlo.
-- [ ] **T22 [MUST] Resolver persecución al esconderse.** Los guardias pasan a investigar la última posición conocida y luego patrullan. **Aceptación:** entrar al armario durante persecución evita la derrota; tras la búsqueda, el guardia completa otra vuelta de patrulla.
-- [ ] **T23 [MUST] Validar M2 jugando.** Provocar persecución, esconderse, esperar el retorno, salir y volver a avanzar. **Aceptación:** ejecutar el ciclo tres veces sin persecución infinita, detección dentro del armario ni bloqueo al salir.
+  - Pendiente parcial: en Play Mode, la selección eligió el armario dentro de 1.8 m, quedó vacía fuera de alcance y no alternó en 20 refrescos con dos candidatos próximos; la ruta `Interact` del armario se ejercitó directamente. La sesión no permitió generar una pulsación física de E en la ventana de Unity, así que la aceptación completa de entrada permanece sin verificar.
+- [x] **T20 [MUST] Crear el armario grisbox.** Permitir entrada y salida, inmovilizar al jugador dentro y adaptar cámara. **Aceptación:** entrar y salir diez veces consecutivas conserva posición y controles; dentro no se puede caminar ni interactuar con otros objetos.
+  - Evidencia: `Assets/Scenes/M2_Recovery.unity` y `Assets/Screenshots/M2/M2-Hideout-View.png`. Diez ciclos de entrada/salida en Play Mode conservaron el estado; una comprobación adicional inyectó movimiento mientras estaba oculto y verificó posición estacionaria, bloqueo de movimiento y selección contextual vacía. La cámara permaneció anclada dentro; al salir se restauraron Rigidbody dinámico, collider y movimiento.
+- [x] **T21 [MUST] Integrar ocultamiento con percepción y captura.** Excluir al jugador oculto de los dos sensores y del contacto de derrota. **Aceptación:** un guardia junto al armario no acumula sospecha ni captura al jugador dentro; al salir, vuelve a percibirlo.
+  - Evidencia: Play Mode en `M2_Recovery`: con el guardia a menos de 0.2 m, proximidad y visión quedaron desactivadas al ocultarse; el guardia no capturó ni pausó el tiempo y al salir volvió a poder percibir al jugador expuesto.
+- [x] **T22 [MUST] Resolver persecución al esconderse.** Los guardias pasan a investigar la última posición conocida y luego patrullan. **Aceptación:** entrar al armario durante persecución evita la derrota; tras la búsqueda, el guardia completa otra vuelta de patrulla.
+  - Evidencia: Play Mode: en Chase, esconderse apagó ambos sensores y cambió el estado a Investigate sobre la última posición; al terminar la búsqueda volvió a Patrol con sospecha 0. El agente en NavMesh completó después el circuito de cuatro waypoints (índice 3→0), manteniéndose en Patrol.
+- [x] **T23 [MUST] Validar M2 jugando.** Provocar persecución, esconderse, esperar el retorno, salir y volver a avanzar. **Aceptación:** ejecutar el ciclo tres veces sin persecución infinita, detección dentro del armario ni bloqueo al salir.
+  - Evidencia: tres ciclos Play Mode con Chase → ocultarse → Investigate → Patrol, sensores apagados dentro y sospecha resuelta; en cada repetición se salió y el jugador se desplazó después. Un seguimiento adicional confirmó que el agente reanudó la patrulla desde la pausa de waypoint. Sin errores de proyecto observados.
 - [ ] **T24 [MUST] Hacer una build temprana de PC.** Incluir el sandbox, cámara, guardia e interacción del armario. **Aceptación:** fuera del editor funcionan movimiento, mouse, cursor, navegación, interacción, persecución y escondite; registrar cualquier diferencia respecto de Play Mode.
+  - Pendiente de aceptación completa: build Windows 64-bit Development generada en `Builds/M2/ElUltimoTurno-M2.exe` (161.16 MB; 0 errores, 4 advertencias de build). No se pudo manejar una ventana de aplicación nativa desde la sesión disponible (sin apps/nativas expuestas), por lo que movimiento, mouse, interacción y escondite fuera del editor quedan sin verificar; no se marca completa.
 
 ## 3. Hito M3 — Decisiones — tipos: nivel, segundo guardia y panel
 
@@ -113,7 +119,7 @@
 
 ## Estado
 
-- **Tareas completadas:** 15 / 47.
-- **Último hito validado:** ninguno (M1 implementado; T05, T06 y T18 pendientes de validación de entrada y ciclo integrado con dispositivos reales).
-- **Bloqueos conocidos:** teclado y mouse físicos no pudieron ejercitarse mediante la sesión automatizada disponible; la simulación de componentes no sustituye esa aceptación.
-- **Alcance de esta revisión:** preparación T01–T03 y tareas M1 hasta T17; no se avanzó a M2.
+- **Tareas completadas:** 19 / 47.
+- **Último hito validado:** ninguno (M1 conserva T05, T06 y T18 pendientes; M2 conserva T19 y T24 pendientes).
+- **Bloqueos conocidos:** teclado y mouse físicos no pudieron ejercitarse mediante la sesión automatizada disponible; T19 no pudo validar la pulsación real de E y T24 no pudo probar controles en la build fuera del editor.
+- **Alcance de esta revisión:** M2 T19–T24; T20–T23 completadas con evidencia de Play Mode. No se avanzó a M3.
