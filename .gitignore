@@ -65,8 +65,6 @@ sysinfo.txt
 *.app
 
 # Local design notes
-/GDD_El_Ultimo_Turno.md
-/PLAN_DE_TAREAS_El_Ultimo_Turno.md
 
 # Crashlytics generated file
 crashlytics-build.properties
