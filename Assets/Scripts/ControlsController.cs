@@ -27,16 +27,35 @@ public class ControlsController : MonoBehaviour
         private set { _mouseDelta = value; }
     }
 
-    private void Awake() => isa = new InputSystem_Actions();
-    private void OnEnable() => isa.Enable();
-    private void OnDisable() => isa.Disable();
+    private void Awake() => EnsureInputActions();
+
+    private void OnEnable()
+    {
+        EnsureInputActions();
+        isa.Enable();
+    }
+
+    private void OnDisable()
+    {
+        if (isa != null) isa.Disable();
+    }
+
+    private void OnDestroy()
+    {
+        isa?.Dispose();
+    }
+
+    private void EnsureInputActions()
+    {
+        if (isa == null) isa = new InputSystem_Actions();
+    }
 
     private void Update()
     {
         Move = isa.Player.Move.ReadValue<Vector2>();
         //Jump = isa.Player.Jump.IsPressed();
 
-        MouseDelta = Mouse.current.delta.ReadValue();
+        MouseDelta = isa.Player.Look.ReadValue<Vector2>();
     }
 
 }
