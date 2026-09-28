@@ -13,6 +13,7 @@ public sealed class GuardBrain : MonoBehaviour
     private PlayerStealthState playerStealth;
     [SerializeField] private State state;
     private float searchUntil;
+    private bool investigatingSound;
     [SerializeField] private Vector3 lastKnown;
     private string gameMessage = "";
     private float messageUntil;
@@ -48,6 +49,12 @@ public sealed class GuardBrain : MonoBehaviour
         bool near = perception.IsNear;
 
         if (visible || near) lastKnown = player.position;
+        if (investigatingSound && (visible || near))
+        {
+            investigatingSound = false;
+            state = State.Patrol;
+            navigation.ResumeNearestWaypoint();
+        }
         suspicion.Evaluate(visible, near, state == State.Chase);
         if (suspicion.Value >= 100f) state = State.Chase;
 
@@ -78,6 +85,7 @@ public sealed class GuardBrain : MonoBehaviour
             navigation.SetSearchMode();
             if (Time.time >= searchUntil && navigation.AtDestination)
             {
+                investigatingSound = false;
                 state = State.Patrol;
                 suspicion.ResetValue();
                 navigation.ResumeNearestWaypoint();
@@ -96,6 +104,19 @@ public sealed class GuardBrain : MonoBehaviour
     }
 
     public void SetProximity(bool value) => perception?.SetProximity(value);
+
+    public bool InvestigateSound(Vector3 origin, float duration)
+    {
+        if (state == State.Chase || perception == null || perception.CanSeePlayer() || perception.IsNear)
+            return false;
+
+        state = State.Investigate;
+        investigatingSound = true;
+        searchUntil = Time.time + Mathf.Max(0.1f, duration);
+        navigation.SetSearchMode();
+        navigation.SetDestination(origin);
+        return true;
+    }
 
     private void OnGUI()
     {
