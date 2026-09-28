@@ -44,6 +44,7 @@ public sealed class GuardBrain : MonoBehaviour
 
     private void Update()
     {
+        if (MissionManager.Instance != null && !MissionManager.Instance.IsPlaying) return;
         if (player == null || perception == null || suspicion == null || navigation == null) return;
         bool visible = perception.CanSeePlayer();
         bool near = perception.IsNear;
@@ -67,9 +68,14 @@ public sealed class GuardBrain : MonoBehaviour
                 if ((playerStealth == null || !playerStealth.IsHidden) &&
                     Vector3.Distance(transform.position, player.position) <= 1.15f)
                 {
-                    gameMessage = "CAPTURADO — reiniciá la escena para volver a intentar";
-                    messageUntil = Time.time + 1000f;
-                    Time.timeScale = 0f;
+                    if (MissionManager.Instance != null)
+                        MissionManager.Instance.RegisterCapture();
+                    else
+                    {
+                        gameMessage = "CAPTURADO — reiniciá la escena para volver a intentar";
+                        messageUntil = Time.time + 1000f;
+                        Time.timeScale = 0f;
+                    }
                 }
             }
             else

@@ -106,12 +106,18 @@
 
 **Meta del hito:** un intento puede empezar, ganar, perder y reiniciarse.
 
-- [ ] **T34 [MUST] Implementar carpeta.** Crear un objeto único interactuable en el archivo. **Aceptación:** se recoge una sola vez, cambia de estado visual y actualiza el objetivo; una segunda interacción no duplica la recogida.
-- [ ] **T35 [MUST] Implementar salida y victoria.** Comprobar posesión de carpeta en la zona de salida. **Aceptación:** entrar sin carpeta no gana y muestra qué falta; entrar con carpeta activa victoria una sola vez.
-- [ ] **T36 [MUST] Implementar estado global y reinicio.** Gestionar jugando, pausa, victoria, derrota y restauración. **Aceptación:** después de reiniciar vuelven jugador, carpeta, ambos guardias, sospechas, armario y recarga del panel a condiciones iniciales; repetir tres partidas seguidas.
-- [ ] **T37 [MUST] Mostrar objetivo e interacciones.** Usar UI simple para objetivo actual y acciones de carpeta, armario y panel. **Aceptación:** el objetivo cambia al recoger la carpeta; las indicaciones aparecen solo dentro del alcance y muestran la acción correcta.
-- [ ] **T38 [MUST] Mostrar resultado y reintento.** Crear avisos funcionales de victoria/derrota y botón o tecla para reintentar. **Aceptación:** ganar y perder detienen la partida; reintentar desde ambos estados permite una nueva partida sin reiniciar Unity.
-- [ ] **T39 [MUST] Validar M4 jugando.** Completar una partida sin ser detectado y otra tras esconderse; provocar además una derrota. **Aceptación:** las tres secuencias llegan al resultado correcto y se puede reintentar después de cada una.
+- [x] **T34 [MUST] Implementar carpeta.** Crear un objeto único interactuable en el archivo. **Aceptación:** se recoge una sola vez, cambia de estado visual y actualiza el objetivo; una segunda interacción no duplica la recogida.
+  - Evidencia: `Assets/Scenes/M3_Decisions.unity`, objeto dorado `MissionFolder` en el archivo. En Play Mode, fuera del alcance no se podía interactuar; dentro, dos llamadas consecutivas al interactuable produjeron una sola recogida (`FolderCollectionCount=1`, `SuccessfulInteractions=1`), ocultaron su renderer y cambiaron el objetivo de “Recuperá la carpeta” a “Llegá a la salida”.
+- [x] **T35 [MUST] Implementar salida y victoria.** Comprobar posesión de carpeta en la zona de salida. **Aceptación:** entrar sin carpeta no gana y muestra qué falta; entrar con carpeta activa victoria una sola vez.
+  - Evidencia: el trigger `ServiceExitTrigger` en Play Mode mantuvo `Playing` al entrar sin carpeta y mostró “Falta la carpeta”. Tras recogerla, el mismo trigger cambió a `Victory` una sola vez, congeló el tiempo y mostró la pantalla de misión completada. Captura: `Assets/Screenshots/M4/M4-Victory.png`.
+- [x] **T36 [MUST] Implementar estado global y reinicio.** Gestionar jugando, pausa, victoria, derrota y restauración. **Aceptación:** después de reiniciar vuelven jugador, carpeta, ambos guardias, sospechas, armario y recarga del panel a condiciones iniciales; repetir tres partidas seguidas.
+  - Evidencia: se probaron los estados `Playing`, `Paused`, `Victory` y `Defeat`; pausa/resume detuvieron y restauraron `Time.timeScale`. Se hicieron tres reintentos dentro de Play Mode, tras victoria sin detección, victoria después de esconderse y derrota. En los tres casos la escena recargó al jugador en (-17,1,0), carpeta visible/no recogida, guardias A/B en Patrol con sospecha 0, armario desocupado, panel disponible y tiempo a escala 1; la referencia del gestor también se recuperó tras recargar.
+- [x] **T37 [MUST] Mostrar objetivo e interacciones.** Usar UI simple para objetivo actual y acciones de carpeta, armario y panel. **Aceptación:** el objetivo cambia al recoger la carpeta; las indicaciones aparecen solo dentro del alcance y muestran la acción correcta.
+  - Evidencia: UI en Game View muestra el objetivo actual. El selector contextual en Play Mode indicó `E — recoger carpeta`, `E — esconderse` y `E — activar zumbador` para los objetos correspondientes; desde la posición inicial alejada no seleccionó interactuable. La carpeta también valida su alcance propio de 1.8 m.
+- [x] **T38 [MUST] Mostrar resultado y reintento.** Crear avisos funcionales de victoria/derrota y botón o tecla para reintentar. **Aceptación:** ganar y perder detienen la partida; reintentar desde ambos estados permite una nueva partida sin reiniciar Unity.
+  - Evidencia: capturas Game View `Assets/Screenshots/M4/M4-Victory.png` y `Assets/Screenshots/M4/M4-Defeat-1.png` muestran los paneles de resultado y botones. Ambos resultados fijaron `Time.timeScale=0`; `Retry` recargó la escena desde victoria y derrota. También se inyectó la tecla R por Input System desde victoria y se comprobó una nueva partida.
+- [x] **T39 [MUST] Validar M4 jugando.** Completar una partida sin ser detectado y otra tras esconderse; provocar además una derrota. **Aceptación:** las tres secuencias llegan al resultado correcto y se puede reintentar después de cada una.
+  - Evidencia: tres secuencias de Play Mode con interacciones y trigger reales (preparación de posiciones mediante el harness del Editor): (1) salida sin carpeta bloqueada, recoger una vez y victoria con ambos guardias en Patrol/sospecha 0; (2) recoger carpeta, preparar persecución de A, entrar al armario, sensores apagados, A investigó y volvió a Patrol, salir y ganar; (3) A en Chase alcanzó al jugador a 0.8 m y activó Defeat. Después de cada resultado se reintentó y se verificó la restauración completa detallada en T36.
 
 ## 5. Hito M5 — Entrega — tipos: claridad, feedback, pruebas y build
 
@@ -128,7 +134,7 @@
 
 ## Estado
 
-- **Tareas completadas:** 28 / 47.
-- **Último hito validado:** ninguno (M1 conserva T05, T06 y T18 pendientes; M2 conserva T19 y T24 pendientes).
+- **Tareas completadas:** 34 / 47.
+- **Último hito validado:** M4 (T34–T39); M1 conserva T05, T06 y T18 pendientes, y M2 conserva T19 y T24 pendientes.
 - **Bloqueos conocidos:** teclado y mouse físicos no pudieron ejercitarse mediante la sesión automatizada disponible; T19 no pudo validar la pulsación real de E y T24 no pudo probar controles en la build fuera del editor.
-- **Alcance de esta revisión:** M3 T25–T33; M3 verificado en Play Mode y no se avanzó a M4. Permanecen los pendientes heredados M1 T05, T06 y T18, y M2 T19 y T24.
+- **Alcance de esta revisión:** M4 T34–T39; ciclo de misión y reintentos verificados en Play Mode. No se avanzó a M5. Permanecen los pendientes heredados M1 T05, T06 y T18, y M2 T19 y T24.

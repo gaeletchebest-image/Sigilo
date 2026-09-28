@@ -28,6 +28,12 @@ public sealed class PlayerInteraction : MonoBehaviour
             if (gameController != null) controls = gameController.GetControlsController();
         }
 
+        if (MissionManager.Instance != null && !MissionManager.Instance.IsPlaying)
+        {
+            selectedInteractable = null;
+            return;
+        }
+
         if (stealthState.IsHidden)
         {
             selectedInteractable = null;
