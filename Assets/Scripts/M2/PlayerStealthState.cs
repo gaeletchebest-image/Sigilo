@@ -23,15 +23,19 @@ public sealed class PlayerStealthState : MonoBehaviour
         for (int i = 0; i < renderers.Length; i++) rendererWasEnabled[i] = renderers[i].enabled;
     }
 
-    public bool EnterHideout(HideoutInteractable hideout)
+public bool EnterHideout(HideoutInteractable hideout)
     {
         if (IsHidden || hideout == null || hideout.IsOccupied || playerController == null) return false;
 
         currentHideout = hideout;
         bodyWasKinematic = body.isKinematic;
+        if (!body.isKinematic)
+        {
+            body.linearVelocity = Vector3.zero;
+            body.angularVelocity = Vector3.zero;
+        }
+
         IsHidden = true;
-        body.linearVelocity = Vector3.zero;
-        body.angularVelocity = Vector3.zero;
         body.isKinematic = true;
         body.position = hideout.PlayerAnchor.position;
         body.rotation = hideout.PlayerAnchor.rotation;
@@ -42,16 +46,20 @@ public sealed class PlayerStealthState : MonoBehaviour
         return true;
     }
 
-    public bool ExitHideout()
+public bool ExitHideout()
     {
         if (!IsHidden || currentHideout == null) return false;
 
         HideoutInteractable hideout = currentHideout;
         body.position = hideout.ExitPoint.position;
         body.rotation = hideout.ExitPoint.rotation;
-        body.linearVelocity = Vector3.zero;
-        body.angularVelocity = Vector3.zero;
         body.isKinematic = bodyWasKinematic;
+        if (!body.isKinematic)
+        {
+            body.linearVelocity = Vector3.zero;
+            body.angularVelocity = Vector3.zero;
+        }
+
         capsule.enabled = true;
         for (int i = 0; i < renderers.Length; i++) renderers[i].enabled = rendererWasEnabled[i];
         IsHidden = false;
