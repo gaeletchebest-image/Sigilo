@@ -282,10 +282,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4d0dacafb5b14c94c806a6d90ef47982, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GuardVisionIndicator
-  arcSegments: 48
+  arcSegments: 32
+  visionOccluders: 1
   groundOffset: 0.035
   fillOpacity: 0.16
   edgeOpacity: 0.75
+  poseRefreshInterval: 0.12
+  occlusionRefreshInterval: 0.25
+  positionUpdateThreshold: 0.12
+  rotationUpdateThreshold: 1.5
+  blendDuration: 0.12
 --- !u!1 &5688451832605220667
 GameObject:
   m_ObjectHideFlags: 0

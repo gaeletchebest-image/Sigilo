@@ -11,6 +11,7 @@ public sealed class GuardPerception : MonoBehaviour
 
     public float VisionRange => visionRange;
     public float VisionAngle => visionAngle;
+    public LayerMask OcclusionMask => occluders;
     public float ProximityRadius => 2f;
     public bool IsNear => !IsPlayerHidden && nearPlayer && HasClearLine();
 
