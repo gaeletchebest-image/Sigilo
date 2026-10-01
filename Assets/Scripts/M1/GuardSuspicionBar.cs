@@ -52,7 +52,9 @@ public sealed class GuardSuspicionBar : MonoBehaviour
 
         fillRect.anchorMax = new Vector2(Mathf.Clamp01(brain.Suspicion / 100f), 1f);
         fill.color = brain.CurrentState == GuardBrain.State.Chase ? new Color(.9f, .12f, .1f) :
-            brain.CurrentState == GuardBrain.State.Investigate ? new Color(1f, .62f, .08f) : new Color(.35f, .85f, .45f);
+            brain.CurrentState == GuardBrain.State.Investigate || brain.CurrentState == GuardBrain.State.Search
+                ? new Color(1f, .62f, .08f)
+                : new Color(.35f, .85f, .45f);
     }
 
     private static Image CreateImage(string objectName, RectTransform parent)

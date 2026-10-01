@@ -2,18 +2,23 @@ using UnityEngine;
 
 public sealed class GuardBrain : MonoBehaviour
 {
-    public enum State { Patrol, Investigate, Chase }
+    // Keep the existing numeric values stable because state is serialized in scenes.
+    public enum State { Patrol, Investigate, Chase, Search }
 
     [SerializeField] private GuardPerception perception;
     [SerializeField] private GuardSuspicion suspicion;
     [SerializeField] private GuardNavigation navigation;
     [SerializeField, Min(0.1f)] private float searchDuration = 4f;
+    [SerializeField, Min(0f)] private float chaseMemoryDuration = 1.25f;
+    [SerializeField, Min(0.1f)] private float routeFailureTimeout = 1.5f;
 
     private Transform player;
     private PlayerStealthState playerStealth;
     [SerializeField] private State state;
     private float searchUntil;
-    private bool investigatingSound;
+    private float lastContactAt = float.NegativeInfinity;
+    private float investigationDuration;
+    private float routeFailureSince = -1f;
     [SerializeField] private Vector3 lastKnown;
     private string gameMessage = "";
     private float messageUntil;
@@ -42,6 +47,7 @@ public sealed class GuardBrain : MonoBehaviour
         }
         if (perception != null) perception.Initialize(player);
         if (navigation != null) navigation.BeginPatrol();
+        investigationDuration = searchDuration;
         lastAudioState = state;
     }
 
@@ -52,20 +58,24 @@ public sealed class GuardBrain : MonoBehaviour
         bool visible = perception.CanSeePlayer();
         bool near = perception.IsNear;
 
-        if (visible || near) lastKnown = player.position;
-        if (investigatingSound && (visible || near))
+        bool hasContact = visible || near;
+        if (hasContact)
         {
-            investigatingSound = false;
-            state = State.Patrol;
-            navigation.ResumeNearestWaypoint();
+            lastKnown = player.position;
+            lastContactAt = Time.time;
         }
+
         suspicion.Evaluate(visible, near, state == State.Chase);
         if (suspicion.Value >= 100f) state = State.Chase;
 
         int suspicionBand = suspicion.Value >= 70f ? 2 : suspicion.Value >= 20f ? 1 : 0;
+        if (suspicionBand < lastSuspicionBand)
+            lastSuspicionBand = suspicionBand;
         if (suspicionBand > lastSuspicionBand)
+        {
             ProceduralAudioFeedback.Instance?.PlaySuspicion();
-        lastSuspicionBand = suspicionBand;
+            lastSuspicionBand = suspicionBand;
+        }
 
         if (state == State.Chase && lastAudioState != State.Chase)
             ProceduralAudioFeedback.Instance?.PlayChase();
@@ -74,7 +84,7 @@ public sealed class GuardBrain : MonoBehaviour
         if (state == State.Chase)
         {
             navigation.SetChaseMode();
-            if (visible || near)
+            if (hasContact)
             {
                 navigation.SetDestination(lastKnown);
                 if ((playerStealth == null || !playerStealth.IsHidden) &&
@@ -90,35 +100,51 @@ public sealed class GuardBrain : MonoBehaviour
                     }
                 }
             }
-            else
+            else if (Time.time - lastContactAt > chaseMemoryDuration)
             {
-                state = State.Investigate;
-                searchUntil = Time.time + searchDuration;
-                navigation.SetSearchMode();
-                navigation.SetDestination(lastKnown);
+                BeginInvestigation(searchDuration);
             }
+            else navigation.SetDestination(lastKnown);
+            return;
+        }
+
+        // Partial suspicion now sends the guard to the clue instead of making it
+        // finish its unrelated patrol route first.
+        if (hasContact && state != State.Chase)
+        {
+            if (state != State.Investigate)
+                BeginInvestigation(searchDuration);
+            navigation.SetSearchMode();
+            navigation.SetDestination(lastKnown);
         }
         else if (state == State.Investigate)
         {
             navigation.SetSearchMode();
-            if (Time.time >= searchUntil && navigation.AtDestination)
+            if (navigation.DestinationFailed)
             {
-                investigatingSound = false;
-                state = State.Patrol;
-                suspicion.ResetValue();
-                navigation.ResumeNearestWaypoint();
+                if (routeFailureSince < 0f) routeFailureSince = Time.time;
+                if (Time.time - routeFailureSince >= routeFailureTimeout)
+                {
+                    FinishInvestigation();
+                    return;
+                }
+            }
+            else routeFailureSince = -1f;
+
+            if (navigation.AtDestination)
+            {
+                state = State.Search;
+                searchUntil = Time.time + investigationDuration;
+                navigation.StopAtDestination();
             }
         }
-        else if (Suspicion > 0f && navigation.AtDestination)
+        else if (state == State.Search)
         {
-            state = State.Investigate;
-            searchUntil = Time.time + searchDuration;
-            navigation.SetDestination(lastKnown);
+            navigation.StopAtDestination();
+            if (Time.time >= searchUntil)
+                FinishInvestigation();
         }
-        else
-        {
-            navigation.TickPatrol();
-        }
+        else navigation.TickPatrol();
     }
 
     public void SetProximity(bool value) => perception?.SetProximity(value);
@@ -128,12 +154,32 @@ public sealed class GuardBrain : MonoBehaviour
         if (state == State.Chase || perception == null || perception.CanSeePlayer() || perception.IsNear)
             return false;
 
+        if (!navigation.SetDestination(origin)) return false;
+        lastKnown = origin;
+        investigationDuration = Mathf.Max(0.1f, duration);
+        routeFailureSince = -1f;
         state = State.Investigate;
-        investigatingSound = true;
-        searchUntil = Time.time + Mathf.Max(0.1f, duration);
         navigation.SetSearchMode();
-        navigation.SetDestination(origin);
         return true;
+    }
+
+    private void BeginInvestigation(float duration)
+    {
+        state = State.Investigate;
+        investigationDuration = Mathf.Max(0.1f, duration);
+        routeFailureSince = -1f;
+        navigation.SetSearchMode();
+        if (!navigation.SetDestination(lastKnown))
+            FinishInvestigation();
+    }
+
+    private void FinishInvestigation()
+    {
+        routeFailureSince = -1f;
+        suspicion.ResetValue();
+        lastSuspicionBand = 0;
+        state = State.Patrol;
+        navigation.ResumeNearestWaypoint();
     }
 
     private void OnGUI()

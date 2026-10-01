@@ -8,12 +8,24 @@ public sealed class GuardNavigation : MonoBehaviour
     [SerializeField, Min(0.1f)] private float patrolSpeed = 1.9f;
     [SerializeField, Min(0.1f)] private float chaseSpeed = 3.5f;
     [SerializeField, Min(0f)] private float waypointPause = 1.1f;
+    [SerializeField, Min(0.05f)] private float destinationRefreshInterval = 0.3f;
+    [SerializeField, Min(0f)] private float destinationMoveThreshold = 0.65f;
+    [SerializeField, Min(0.1f)] private float patrolRouteFailureTimeout = 1f;
     [SerializeField] private int waypoint;
     private float pauseUntil;
+    private float patrolFailureSince = -1f;
+    private float destinationRequestedAt = float.NegativeInfinity;
+    private Vector3 requestedDestination;
+    private bool hasRequestedDestination;
 
     public int WaypointIndex => waypoint;
     public bool IsStopped => agent == null || agent.isStopped;
-    public bool AtDestination => agent != null && !agent.pathPending && agent.remainingDistance <= agent.stoppingDistance + .1f;
+    public bool AtDestination => agent != null && agent.isOnNavMesh &&
+        agent.pathStatus == NavMeshPathStatus.PathComplete && !agent.pathPending &&
+        agent.remainingDistance <= agent.stoppingDistance + .1f;
+    public bool DestinationFailed => agent != null && agent.isOnNavMesh && hasRequestedDestination &&
+        Time.time - destinationRequestedAt >= .75f && !agent.pathPending &&
+        (!agent.hasPath || agent.pathStatus != NavMeshPathStatus.PathComplete);
     public Vector3 Position => transform.position;
     public Vector3 Destination => agent != null && agent.hasPath ? agent.destination : transform.position;
 
@@ -26,6 +38,8 @@ public sealed class GuardNavigation : MonoBehaviour
     {
         waypoint = 0;
         pauseUntil = 0f;
+        patrolFailureSince = -1f;
+        hasRequestedDestination = false;
         if (agent == null) return;
         agent.speed = patrolSpeed;
         agent.isStopped = false;
@@ -33,12 +47,33 @@ public sealed class GuardNavigation : MonoBehaviour
             SetDestination(waypoints[0].position);
     }
 
-    public void SetDestination(Vector3 destination)
+    public bool SetDestination(Vector3 destination)
     {
-        if (agent == null || !agent.isOnNavMesh) return;
+        if (agent == null || !agent.isOnNavMesh) return false;
+        if (hasRequestedDestination &&
+            (destination - requestedDestination).sqrMagnitude < destinationMoveThreshold * destinationMoveThreshold &&
+            Time.time - destinationRequestedAt < destinationRefreshInterval)
+            return true;
+
         agent.isStopped = false;
         if (NavMesh.SamplePosition(destination, out NavMeshHit hit, 2f, NavMesh.AllAreas))
-            agent.SetDestination(hit.position);
+        {
+            if (agent.SetDestination(hit.position))
+            {
+                requestedDestination = hit.position;
+                destinationRequestedAt = Time.time;
+                hasRequestedDestination = true;
+                return true;
+            }
+        }
+        hasRequestedDestination = false;
+        return false;
+    }
+
+    public void StopAtDestination()
+    {
+        if (agent != null && agent.isOnNavMesh && AtDestination)
+            agent.isStopped = true;
     }
 
     public void SetChaseMode()
@@ -58,18 +93,57 @@ public sealed class GuardNavigation : MonoBehaviour
     public void TickPatrol()
     {
         if (waypoints == null || waypoints.Length == 0 || agent == null || !agent.isOnNavMesh) return;
+        waypoint = Mathf.Clamp(waypoint, 0, waypoints.Length - 1);
         if (Time.time < pauseUntil) return;
+        if (waypoints[waypoint] == null)
+        {
+            AdvanceWaypoint();
+            return;
+        }
         if (agent.isStopped)
         {
             agent.isStopped = false;
-            SetDestination(waypoints[waypoint].position);
         }
+        else if (DestinationFailed)
+        {
+            if (patrolFailureSince < 0f) patrolFailureSince = Time.time;
+            if (Time.time - patrolFailureSince >= patrolRouteFailureTimeout)
+            {
+                patrolFailureSince = -1f;
+                AdvanceWaypoint();
+                pauseUntil = Time.time;
+                return;
+            }
+        }
+        else if (!hasRequestedDestination)
+        {
+            if (SetDestination(waypoints[waypoint].position))
+                patrolFailureSince = -1f;
+            else
+            {
+                if (patrolFailureSince < 0f) patrolFailureSince = Time.time;
+                if (Time.time - patrolFailureSince >= patrolRouteFailureTimeout)
+                {
+                    patrolFailureSince = -1f;
+                    AdvanceWaypoint();
+                    pauseUntil = Time.time;
+                    return;
+                }
+            }
+        }
+        else patrolFailureSince = -1f;
         if (AtDestination)
         {
-            waypoint = (waypoint + 1) % waypoints.Length;
-            pauseUntil = Time.time + waypointPause;
-            agent.isStopped = true;
+            AdvanceWaypoint();
         }
+    }
+
+    private void AdvanceWaypoint()
+    {
+        waypoint = (waypoint + 1) % waypoints.Length;
+        pauseUntil = Time.time + waypointPause;
+        if (agent != null && agent.isOnNavMesh) agent.isStopped = true;
+        hasRequestedDestination = false;
     }
 
     public void ResumeNearestWaypoint()
@@ -86,6 +160,7 @@ public sealed class GuardNavigation : MonoBehaviour
         if (distance == float.MaxValue) return;
         waypoint = best;
         agent.speed = patrolSpeed;
+        hasRequestedDestination = false;
         SetDestination(waypoints[waypoint].position);
     }
 
