@@ -2,7 +2,7 @@ using UnityEngine;
 
 public sealed class GuardPerception : MonoBehaviour
 {
-    [SerializeField, Min(0.1f)] private float visionRange = 6f;
+    [SerializeField, Min(0.1f)] private float visionRange = 9f;
     [SerializeField, Range(1f, 180f)] private float visionAngle = 100f;
     [SerializeField] private LayerMask occluders = ~0;
     private Transform player;

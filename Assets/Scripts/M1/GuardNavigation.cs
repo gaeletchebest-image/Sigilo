@@ -5,9 +5,9 @@ public sealed class GuardNavigation : MonoBehaviour
 {
     [SerializeField] private NavMeshAgent agent;
     [SerializeField] private Transform[] waypoints;
-    [SerializeField, Min(0.1f)] private float patrolSpeed = 2f;
+    [SerializeField, Min(0.1f)] private float patrolSpeed = 1.9f;
     [SerializeField, Min(0.1f)] private float chaseSpeed = 3.5f;
-    [SerializeField, Min(0f)] private float waypointPause = 1f;
+    [SerializeField, Min(0f)] private float waypointPause = 1.1f;
     [SerializeField] private int waypoint;
     private float pauseUntil;
 
@@ -26,9 +26,11 @@ public sealed class GuardNavigation : MonoBehaviour
     {
         waypoint = 0;
         pauseUntil = 0f;
+        if (agent == null) return;
         agent.speed = patrolSpeed;
         agent.isStopped = false;
-        if (waypoints.Length > 0) SetDestination(waypoints[0].position);
+        if (waypoints != null && waypoints.Length > 0 && waypoints[0] != null)
+            SetDestination(waypoints[0].position);
     }
 
     public void SetDestination(Vector3 destination)
@@ -41,12 +43,14 @@ public sealed class GuardNavigation : MonoBehaviour
 
     public void SetChaseMode()
     {
+        if (agent == null) return;
         agent.speed = chaseSpeed;
         agent.isStopped = false;
     }
 
     public void SetSearchMode()
     {
+        if (agent == null) return;
         agent.speed = patrolSpeed;
         agent.isStopped = false;
     }
@@ -70,14 +74,16 @@ public sealed class GuardNavigation : MonoBehaviour
 
     public void ResumeNearestWaypoint()
     {
-        if (waypoints == null || waypoints.Length == 0) return;
+        if (waypoints == null || waypoints.Length == 0 || agent == null) return;
         int best = 0;
         float distance = float.MaxValue;
         for (int i = 0; i < waypoints.Length; i++)
         {
+            if (waypoints[i] == null) continue;
             float d = Vector3.Distance(transform.position, waypoints[i].position);
             if (d < distance) { distance = d; best = i; }
         }
+        if (distance == float.MaxValue) return;
         waypoint = best;
         agent.speed = patrolSpeed;
         SetDestination(waypoints[waypoint].position);

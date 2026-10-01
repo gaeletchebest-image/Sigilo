@@ -140,37 +140,8 @@ public sealed class GuardBrain : MonoBehaviour
     {
         if (MissionManager.Instance != null && MissionManager.Instance.State == MissionManager.RunState.StartMenu)
             return;
-
-        float scale = Mathf.Max(1f, Mathf.Min(Screen.width / 960f, Screen.height / 540f));
-        Matrix4x4 previousMatrix = GUI.matrix;
-        int previousFont = GUI.skin.label.fontSize;
-        int previousBoxFont = GUI.skin.box.fontSize;
-        GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
-        GUI.skin.label.fontSize = 18;
-        GUI.skin.box.fontSize = 18;
-        float screenWidth = Screen.width / scale;
-        bool guardB = gameObject.name.IndexOf("B", System.StringComparison.OrdinalIgnoreCase) >= 0;
-        const float panelWidth = 278f;
-        float x = guardB ? screenWidth - 290f : 12f;
-        string stateText = state == State.Patrol ? "PATRULLA" : state == State.Investigate ? "ALERTA" : "PERSECUCIÓN";
-        Color stateColor = state == State.Patrol ? new Color(.12f, .34f, .25f) :
-            state == State.Investigate ? new Color(.56f, .34f, .08f) : new Color(.55f, .12f, .12f);
-        GUI.color = stateColor;
-        GUI.Box(new Rect(x, 12, panelWidth, 116), GUIContent.none);
-        GUI.color = Color.white;
-        GUI.Label(new Rect(x + 12, 16, panelWidth - 24, 24), guardB ? "GUARDIA B" : "GUARDIA A");
-        GUI.Label(new Rect(x + 12, 39, panelWidth - 24, 24), "Estado: " + stateText);
-        GUI.Label(new Rect(x + 12, 63, panelWidth - 24, 24), "Sospecha: " + Mathf.RoundToInt(Suspicion) + "%");
-        GUI.color = new Color(.08f, .09f, .11f);
-        GUI.DrawTexture(new Rect(x + 12, 93, panelWidth - 24, 14), Texture2D.whiteTexture);
-        GUI.color = state == State.Chase ? Color.red : state == State.Investigate ? new Color(1f, .65f, .12f) : new Color(.45f, .85f, .5f);
-        GUI.DrawTexture(new Rect(x + 12, 93, (panelWidth - 24) * Suspicion / 100f, 14), Texture2D.whiteTexture);
-        GUI.color = Color.white;
         if (Time.time < messageUntil)
-            GUI.Box(new Rect(Screen.width / scale * .5f - 250, Screen.height / scale * .5f - 34, 500, 68), gameMessage);
-        GUI.skin.label.fontSize = previousFont;
-        GUI.skin.box.fontSize = previousBoxFont;
-        GUI.matrix = previousMatrix;
+            GUI.Box(new Rect(Screen.width * .5f - 250f, Screen.height * .5f - 34f, 500f, 68f), gameMessage);
     }
 
     private void OnDrawGizmosSelected()
