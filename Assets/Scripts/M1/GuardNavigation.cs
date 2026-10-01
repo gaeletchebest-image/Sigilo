@@ -103,8 +103,10 @@ public sealed class GuardNavigation : MonoBehaviour
         if (agent.isStopped)
         {
             agent.isStopped = false;
+            hasRequestedDestination = false;
         }
-        else if (DestinationFailed)
+
+        if (DestinationFailed)
         {
             if (patrolFailureSince < 0f) patrolFailureSince = Time.time;
             if (Time.time - patrolFailureSince >= patrolRouteFailureTimeout)
@@ -118,7 +120,12 @@ public sealed class GuardNavigation : MonoBehaviour
         else if (!hasRequestedDestination)
         {
             if (SetDestination(waypoints[waypoint].position))
+            {
                 patrolFailureSince = -1f;
+                // The agent may still report the previous waypoint's remaining
+                // distance this frame. Wait for the new path before arrival checks.
+                return;
+            }
             else
             {
                 if (patrolFailureSince < 0f) patrolFailureSince = Time.time;
