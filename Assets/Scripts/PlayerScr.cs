@@ -20,6 +20,10 @@ public class PlayerScr : MonoBehaviour
     [SerializeField, Min(0.1f)] private float cameraProbeStartDistance = 0.75f;
     [SerializeField, Min(0.1f)] private float minimumCameraDistance = 0.9f;
     [SerializeField, Min(0f)] private float cameraReturnSpeed = 5f;
+    [Header("Hideout camera")]
+    [SerializeField, Range(0f, 80f)] private float hideoutLookYawLimit = 35f;
+    [SerializeField, Range(0f, 30f)] private float hideoutLookPitchLimit = 12f;
+    [SerializeField, Min(0f)] private float hideoutCameraBlendDuration = 0.3f;
     [Header("Player turning")]
     [SerializeField, Min(0f)] private float playerTurnSpeed = 540f;
     private float cameraRotationX;
@@ -28,6 +32,16 @@ public class PlayerScr : MonoBehaviour
     private float currentCameraDistance;
     private Transform camera;
     private Transform hideoutCameraAnchor;
+    private float hideoutCameraYaw;
+    private float hideoutCameraPitch;
+    private float hideoutCameraBlendRemaining;
+    private Vector3 hideoutCameraBlendStartPosition;
+    private Quaternion hideoutCameraBlendStartRotation;
+    private Vector3 hideoutCameraBlendStartLocalPosition;
+    private float outsideCameraBlendRemaining;
+    private Vector3 outsideCameraBlendStartPosition;
+    private Quaternion outsideCameraBlendStartRotation;
+    private Vector3 outsideCameraBlendStartLocalPosition;
     private bool movementLocked;
     private readonly RaycastHit[] cameraCollisionHits = new RaycastHit[8];
 
@@ -78,21 +92,58 @@ public class PlayerScr : MonoBehaviour
     private void Update()
     {
         if (mission != null && !mission.IsPlaying) return;
-        if (!movementLocked) ReadLookInput();
+        if (movementLocked)
+        {
+            if (hideoutCameraAnchor != null && hideoutCameraBlendRemaining <= 0f)
+                ReadHideoutLookInput();
+            return;
+        }
+
+        ReadLookInput();
     }
 
     private void LateUpdate()
     {
         if (hideoutCameraAnchor != null)
         {
-            cameraTransform.position = hideoutCameraAnchor.position;
-            cameraTransform.rotation = hideoutCameraAnchor.rotation;
-            camera.localPosition = Vector3.zero;
+            Quaternion targetRotation = hideoutCameraAnchor.rotation *
+                Quaternion.Euler(hideoutCameraPitch, hideoutCameraYaw, 0f);
+            if (hideoutCameraBlendRemaining > 0f && hideoutCameraBlendDuration > 0f)
+            {
+                float progress = 1f - hideoutCameraBlendRemaining / hideoutCameraBlendDuration;
+                cameraTransform.position = Vector3.Lerp(
+                    hideoutCameraBlendStartPosition, hideoutCameraAnchor.position, progress);
+                cameraTransform.rotation = Quaternion.Slerp(
+                    hideoutCameraBlendStartRotation, targetRotation, progress);
+                camera.localPosition = Vector3.Lerp(
+                    hideoutCameraBlendStartLocalPosition, Vector3.zero, progress);
+                hideoutCameraBlendRemaining = Mathf.Max(
+                    0f, hideoutCameraBlendRemaining - Time.deltaTime);
+            }
+            else
+            {
+                cameraTransform.position = hideoutCameraAnchor.position;
+                cameraTransform.rotation = targetRotation;
+                camera.localPosition = Vector3.zero;
+            }
             return;
         }
 
         UpdateCameraOrbit();
         UpdateCameraCollision();
+        if (outsideCameraBlendRemaining > 0f && hideoutCameraBlendDuration > 0f)
+        {
+            float progress = 1f - outsideCameraBlendRemaining / hideoutCameraBlendDuration;
+            progress = progress * progress * (3f - 2f * progress);
+            cameraTransform.position = Vector3.Lerp(
+                outsideCameraBlendStartPosition, cameraTransform.position, progress);
+            cameraTransform.rotation = Quaternion.Slerp(
+                outsideCameraBlendStartRotation, cameraTransform.rotation, progress);
+            camera.localPosition = Vector3.Lerp(
+                outsideCameraBlendStartLocalPosition, camera.localPosition, progress);
+            outsideCameraBlendRemaining = Mathf.Max(
+                0f, outsideCameraBlendRemaining - Time.deltaTime);
+        }
     }
 
     private void FixedUpdate()
@@ -103,9 +154,33 @@ public class PlayerScr : MonoBehaviour
 
     public void SetShelterMode(bool hidden, Transform cameraAnchor = null)
     {
+        if (!hidden && hideoutCameraAnchor != null && camera != null && cameraTransform != null)
+        {
+            outsideCameraBlendStartPosition = cameraTransform.position;
+            outsideCameraBlendStartRotation = cameraTransform.rotation;
+            outsideCameraBlendStartLocalPosition = camera.localPosition;
+            outsideCameraBlendRemaining = hideoutCameraBlendDuration;
+        }
+
         movementLocked = hidden;
         hideoutCameraAnchor = hidden ? cameraAnchor : null;
+        hideoutCameraYaw = 0f;
+        hideoutCameraPitch = 0f;
+        hideoutCameraBlendRemaining = 0f;
+        if (hidden) outsideCameraBlendRemaining = 0f;
+        if (hidden && cameraAnchor != null && camera != null && cameraTransform != null)
+        {
+            hideoutCameraBlendStartPosition = cameraTransform.position;
+            hideoutCameraBlendStartRotation = cameraTransform.rotation;
+            hideoutCameraBlendStartLocalPosition = camera.localPosition;
+            hideoutCameraBlendRemaining = hideoutCameraBlendDuration;
+        }
         if (!hidden) currentCameraDistance = cameraDistance;
+    }
+
+    public void SetMovementLocked(bool locked)
+    {
+        movementLocked = locked;
     }
 
     private void Move()
@@ -132,6 +207,21 @@ public class PlayerScr : MonoBehaviour
 
         cameraRotationX -= mouseY;
         cameraRotationX = Mathf.Clamp(cameraRotationX, minLookAngle, maxLookAngle);
+    }
+
+    void ReadHideoutLookInput()
+    {
+        float mouseX = controls.MouseDelta.x * mouseSensitivity;
+        float mouseY = controls.MouseDelta.y * mouseSensitivity;
+
+        hideoutCameraYaw = Mathf.Clamp(
+            hideoutCameraYaw + mouseX,
+            -hideoutLookYawLimit,
+            hideoutLookYawLimit);
+        hideoutCameraPitch = Mathf.Clamp(
+            hideoutCameraPitch - mouseY,
+            -hideoutLookPitchLimit,
+            hideoutLookPitchLimit);
     }
 
     void UpdateCameraOrbit()

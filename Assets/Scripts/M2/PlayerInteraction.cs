@@ -30,13 +30,13 @@ public sealed class PlayerInteraction : MonoBehaviour
 
         if (MissionManager.Instance != null && !MissionManager.Instance.IsPlaying)
         {
-            selectedInteractable = null;
+            SetSelectedInteractable(null);
             return;
         }
 
         if (stealthState.IsHidden)
         {
-            selectedInteractable = null;
+            SetSelectedInteractable(null);
             if (controls != null && controls.InteractPressedThisFrame) stealthState.ExitHideout();
             return;
         }
@@ -77,15 +77,27 @@ public sealed class PlayerInteraction : MonoBehaviour
             }
         }
 
-        selectedInteractable = previous != null &&
+        ContextualInteractable nextSelection = previous != null &&
             Mathf.Sqrt(previousDistance) <= Mathf.Sqrt(bestDistance) + selectionHysteresis
                 ? previous
                 : best;
+        SetSelectedInteractable(nextSelection);
+    }
+
+    private void SetSelectedInteractable(ContextualInteractable nextSelection)
+    {
+        if (selectedInteractable == nextSelection) return;
+        if (selectedInteractable is HideoutInteractable previousHideout)
+            previousHideout.SetPromptSelected(false);
+        selectedInteractable = nextSelection;
+        if (selectedInteractable is HideoutInteractable nextHideout)
+            nextHideout.SetPromptSelected(true);
     }
 
     private void OnGUI()
     {
         if (selectedInteractable == null || stealthState.IsHidden) return;
+        if (selectedInteractable is HideoutInteractable) return;
         GUI.Label(new Rect(Screen.width * .5f - 140f, Screen.height - 78f, 280f, 36f),
             selectedInteractable.InteractionPrompt);
     }
