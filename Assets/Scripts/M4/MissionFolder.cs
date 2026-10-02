@@ -8,6 +8,9 @@ public sealed class MissionFolder : ContextualInteractable
     private bool promptSelected;
     private float promptAlpha;
     private GUIStyle promptStyle;
+    [SerializeField, Range(0f, 0.5f)] private float pulseScaleAmount = 0.24f;
+    [SerializeField, Min(0.1f)] private float pulseSpeed = 1.8f;
+    private Vector3 originalScale;
     [SerializeField, Min(.1f)] private float interactionRange = 1.8f;
     private Renderer[] visuals;
     public bool IsCollected { get; private set; }
@@ -20,6 +23,12 @@ public sealed class MissionFolder : ContextualInteractable
         float targetAlpha = promptSelected && !IsCollected ? 1f : 0f;
         promptAlpha = Mathf.MoveTowards(promptAlpha, targetAlpha,
             Time.unscaledDeltaTime / Mathf.Max(0.01f, promptFadeDuration));
+
+        if (!IsCollected)
+        {
+            float pulse = 1f + pulseScaleAmount * (0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * pulseSpeed));
+            transform.localScale = originalScale * pulse;
+        }
     }
 
     public void SetPromptSelected(bool selected)
@@ -67,6 +76,7 @@ public sealed class MissionFolder : ContextualInteractable
 
     private void Awake()
     {
+        originalScale = transform.localScale;
         visuals = GetComponentsInChildren<Renderer>(true);
     }
 
@@ -86,6 +96,7 @@ public sealed class MissionFolder : ContextualInteractable
 
         IsCollected = true;
         SuccessfulInteractions++;
+        transform.localScale = originalScale;
         foreach (Renderer visual in visuals)
             if (visual != null) visual.enabled = false;
         promptSelected = false;
