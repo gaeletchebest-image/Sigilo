@@ -134,7 +134,7 @@ NavMeshAgent:
   m_Enabled: 1
   m_AgentTypeID: 0
   m_Radius: 0.3
-  m_Speed: 2
+  m_Speed: 3
   m_Acceleration: 8
   avoidancePriority: 50
   m_AngularSpeed: 300
@@ -162,6 +162,11 @@ MonoBehaviour:
   suspicion: {fileID: 2569569038213804175}
   navigation: {fileID: 1833782893635684036}
   searchDuration: 4
+  chaseMemoryDuration: 1.25
+  routeFailureTimeout: 1.5
+  soundAttentionDuration: 3
+  hideoutDoorDuration: 0.35
+  hideoutPullDuration: 0.35
   state: 0
   lastKnown: {x: 0, y: 0, z: 0}
 --- !u!114 &2838746847515301061
@@ -211,9 +216,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GuardNavigation
   agent: {fileID: 987344577825556120}
   waypoints: []
-  patrolSpeed: 1.9
-  chaseSpeed: 3.5
+  patrolSpeed: 3.5
+  chaseSpeed: 5.5
   waypointPause: 1.1
+  destinationRefreshInterval: 0.3
+  destinationMoveThreshold: 0.65
+  patrolRouteFailureTimeout: 1
   waypoint: 0
 --- !u!54 &1625925334212312879
 Rigidbody:
@@ -283,10 +291,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GuardVisionIndicator
   arcSegments: 32
-  visionOccluders: 1
+  visionOccluders:
+    serializedVersion: 2
+    m_Bits: 1
   groundOffset: 0.035
   fillOpacity: 0.16
   edgeOpacity: 0.75
+  edgeWidth: 0.035
   poseRefreshInterval: 0.12
   occlusionRefreshInterval: 0.25
   positionUpdateThreshold: 0.12
@@ -344,7 +355,7 @@ SphereCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Radius: 2
+  m_Radius: 4
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!114 &2827349592116507596
 MonoBehaviour:
