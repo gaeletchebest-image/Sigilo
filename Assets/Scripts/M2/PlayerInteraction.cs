@@ -28,7 +28,8 @@ public sealed class PlayerInteraction : MonoBehaviour
             if (gameController != null) controls = gameController.GetControlsController();
         }
 
-        if (MissionManager.Instance != null && !MissionManager.Instance.IsPlaying)
+        if (MissionManager.Instance != null &&
+            (!MissionManager.Instance.IsPlaying || MissionManager.Instance.IsCinematic))
         {
             SetSelectedInteractable(null);
             return;
@@ -89,15 +90,19 @@ public sealed class PlayerInteraction : MonoBehaviour
         if (selectedInteractable == nextSelection) return;
         if (selectedInteractable is HideoutInteractable previousHideout)
             previousHideout.SetPromptSelected(false);
+        if (selectedInteractable is ServicePanel previousServicePanel)
+            previousServicePanel.SetPromptSelected(false);
         selectedInteractable = nextSelection;
         if (selectedInteractable is HideoutInteractable nextHideout)
             nextHideout.SetPromptSelected(true);
+        if (selectedInteractable is ServicePanel nextServicePanel)
+            nextServicePanel.SetPromptSelected(true);
     }
 
     private void OnGUI()
     {
         if (selectedInteractable == null || stealthState.IsHidden) return;
-        if (selectedInteractable is HideoutInteractable) return;
+        if (selectedInteractable is HideoutInteractable || selectedInteractable is ServicePanel) return;
         GUI.Label(new Rect(Screen.width * .5f - 140f, Screen.height - 78f, 280f, 36f),
             selectedInteractable.InteractionPrompt);
     }

@@ -11,6 +11,7 @@ public sealed class GuardBrain : MonoBehaviour
     [SerializeField, Min(0.1f)] private float searchDuration = 4f;
     [SerializeField, Min(0f)] private float chaseMemoryDuration = 1.25f;
     [SerializeField, Min(0.1f)] private float routeFailureTimeout = 1.5f;
+    [SerializeField, Min(0.1f)] private float soundAttentionDuration = 3f;
 
     private Transform player;
     private PlayerStealthState playerStealth;
@@ -24,11 +25,13 @@ public sealed class GuardBrain : MonoBehaviour
     private float messageUntil;
     private int lastSuspicionBand;
     private State lastAudioState;
+    private float soundAttentionUntil;
 
     public float Suspicion => suspicion != null ? suspicion.Value : 0f;
     public State CurrentState => state;
     public Vector3 LastKnown => lastKnown;
     public int WaypointIndex => navigation != null ? navigation.WaypointIndex : 0;
+    public bool IsSoundAlerted => Time.time < soundAttentionUntil;
 
     private void Awake()
     {
@@ -53,7 +56,8 @@ public sealed class GuardBrain : MonoBehaviour
 
     private void Update()
     {
-        if (MissionManager.Instance != null && !MissionManager.Instance.IsPlaying) return;
+        if (MissionManager.Instance != null &&
+            (!MissionManager.Instance.IsPlaying || MissionManager.Instance.IsCinematic)) return;
         if (player == null || perception == null || suspicion == null || navigation == null) return;
         bool visible = perception.CanSeePlayer();
         bool near = perception.IsNear;
@@ -158,6 +162,7 @@ public sealed class GuardBrain : MonoBehaviour
         lastKnown = origin;
         investigationDuration = Mathf.Max(0.1f, duration);
         routeFailureSince = -1f;
+        soundAttentionUntil = Time.time + soundAttentionDuration;
         state = State.Investigate;
         navigation.SetSearchMode();
         return true;

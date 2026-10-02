@@ -9,6 +9,8 @@ public sealed class GuardSuspicionBar : MonoBehaviour
     private Canvas canvas;
     private Image fill;
     private RectTransform fillRect;
+    private Text attentionLabel;
+    private RectTransform attentionRect;
 
     private void Awake()
     {
@@ -36,6 +38,28 @@ public sealed class GuardSuspicionBar : MonoBehaviour
         fillRect.anchorMax = new Vector2(0f, 1f);
         fillRect.pivot = new Vector2(0f, .5f);
         fillRect.sizeDelta = Vector2.zero;
+
+        GameObject attentionObject = new GameObject("SoundAttention", typeof(RectTransform),
+            typeof(CanvasRenderer), typeof(Text));
+        attentionObject.transform.SetParent(barRect, false);
+        attentionRect = attentionObject.GetComponent<RectTransform>();
+        attentionRect.anchorMin = new Vector2(.5f, .5f);
+        attentionRect.anchorMax = new Vector2(.5f, .5f);
+        attentionRect.pivot = new Vector2(.5f, .5f);
+        attentionRect.sizeDelta = new Vector2(180f, 36f);
+        attentionRect.anchoredPosition = new Vector2(0f, 38f);
+        attentionLabel = attentionObject.GetComponent<Text>();
+        attentionLabel.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        attentionLabel.text = "¡TE ESCUCHÓ!";
+        attentionLabel.fontSize = 22;
+        attentionLabel.fontStyle = FontStyle.Bold;
+        attentionLabel.alignment = TextAnchor.MiddleCenter;
+        attentionLabel.color = new Color(1f, .72f, .12f);
+        attentionLabel.raycastTarget = false;
+        Outline outline = attentionObject.AddComponent<Outline>();
+        outline.effectColor = new Color(.15f, .035f, .01f, .95f);
+        outline.effectDistance = new Vector2(1.5f, -1.5f);
+        attentionObject.SetActive(false);
     }
 
     private void LateUpdate()
@@ -51,6 +75,19 @@ public sealed class GuardSuspicionBar : MonoBehaviour
             canvas.transform.rotation = Quaternion.LookRotation(canvas.transform.position - view.transform.position);
 
         fillRect.anchorMax = new Vector2(Mathf.Clamp01(brain.Suspicion / 100f), 1f);
+        if (attentionLabel != null)
+        {
+            bool alertedBySound = brain.IsSoundAlerted;
+            attentionLabel.gameObject.SetActive(alertedBySound);
+            if (alertedBySound)
+            {
+                float pulse = 1f + Mathf.Sin(Time.unscaledTime * 8f) * .08f;
+                attentionRect.localScale = Vector3.one * pulse;
+                attentionRect.anchoredPosition = new Vector2(0f, 38f + Mathf.Sin(Time.unscaledTime * 5f) * 2f);
+                attentionLabel.color = Color.Lerp(new Color(1f, .55f, .08f),
+                    new Color(1f, .9f, .35f), (Mathf.Sin(Time.unscaledTime * 8f) + 1f) * .5f);
+            }
+        }
         fill.color = brain.CurrentState == GuardBrain.State.Chase ? new Color(.9f, .12f, .1f) :
             brain.CurrentState == GuardBrain.State.Investigate || brain.CurrentState == GuardBrain.State.Search
                 ? new Color(1f, .62f, .08f)

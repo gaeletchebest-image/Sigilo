@@ -23,9 +23,12 @@ public sealed class MissionManager : MonoBehaviour
     private int folderCollectionCount;
     private string notice = "";
     private float noticeUntil;
+    private bool isCinematic;
+    private float timeScaleBeforeCinematic = 1f;
 
     public RunState State => state;
     public bool IsPlaying => state == RunState.Playing;
+    public bool IsCinematic => isCinematic;
     public bool HasFolder => hasFolder;
     public int FolderCollectionCount => folderCollectionCount;
     public string Objective => hasFolder ? "Objetivo: Llegá a la salida" : "Objetivo: Recuperá la carpeta";
@@ -54,6 +57,8 @@ public sealed class MissionManager : MonoBehaviour
 
     private void Update()
     {
+        if (isCinematic) return;
+
         Keyboard keyboard = Keyboard.current;
         if (keyboard == null) return;
 
@@ -81,7 +86,7 @@ public sealed class MissionManager : MonoBehaviour
 
     public bool RegisterFolderCollected()
     {
-        if (state != RunState.Playing || hasFolder) return false;
+        if (state != RunState.Playing || isCinematic || hasFolder) return false;
         hasFolder = true;
         folderCollectionCount++;
         ShowNotice("Carpeta recuperada");
@@ -91,7 +96,7 @@ public sealed class MissionManager : MonoBehaviour
 
     public bool TryEscape()
     {
-        if (state != RunState.Playing) return false;
+        if (state != RunState.Playing || isCinematic) return false;
         if (!hasFolder)
         {
             ShowNotice("Falta la carpeta");
@@ -107,7 +112,7 @@ public sealed class MissionManager : MonoBehaviour
 
     public void RegisterCapture()
     {
-        if (state != RunState.Playing) return;
+        if (state != RunState.Playing || isCinematic) return;
         state = RunState.Defeat;
         Time.timeScale = 0f;
         ReleaseCursor();
@@ -124,7 +129,7 @@ public sealed class MissionManager : MonoBehaviour
 
     public void Pause()
     {
-        if (state != RunState.Playing) return;
+        if (state != RunState.Playing || isCinematic) return;
         state = RunState.Paused;
         Time.timeScale = 0f;
         ReleaseCursor();
@@ -136,6 +141,24 @@ public sealed class MissionManager : MonoBehaviour
         state = RunState.Playing;
         Time.timeScale = 1f;
         CaptureCursor();
+    }
+
+    public bool BeginCinematic()
+    {
+        if (state != RunState.Playing || isCinematic) return false;
+
+        isCinematic = true;
+        timeScaleBeforeCinematic = Time.timeScale;
+        Time.timeScale = 0f;
+        return true;
+    }
+
+    public void EndCinematic()
+    {
+        if (!isCinematic) return;
+
+        isCinematic = false;
+        Time.timeScale = timeScaleBeforeCinematic;
     }
 
     public void Retry()
@@ -232,6 +255,7 @@ public sealed class MissionManager : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (isCinematic) Time.timeScale = timeScaleBeforeCinematic;
         if (instance == this) instance = null;
     }
 }
