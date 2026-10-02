@@ -90,11 +90,16 @@ public sealed class PlayerInteraction : MonoBehaviour
         if (selectedInteractable == nextSelection) return;
         if (selectedInteractable is HideoutInteractable previousHideout)
             previousHideout.SetPromptSelected(false);
+        if (selectedInteractable is MissionFolder previousFolder)
+            previousFolder.SetPromptSelected(false);
         if (selectedInteractable is ServicePanel previousServicePanel)
             previousServicePanel.SetPromptSelected(false);
+
         selectedInteractable = nextSelection;
         if (selectedInteractable is HideoutInteractable nextHideout)
             nextHideout.SetPromptSelected(true);
+        if (selectedInteractable is MissionFolder nextFolder)
+            nextFolder.SetPromptSelected(true);
         if (selectedInteractable is ServicePanel nextServicePanel)
             nextServicePanel.SetPromptSelected(true);
     }
@@ -102,7 +107,7 @@ public sealed class PlayerInteraction : MonoBehaviour
     private void OnGUI()
     {
         if (selectedInteractable == null || stealthState.IsHidden) return;
-        if (selectedInteractable is HideoutInteractable || selectedInteractable is ServicePanel) return;
+        if (selectedInteractable is HideoutInteractable || selectedInteractable is ServicePanel || selectedInteractable is MissionFolder) return;
         GUI.Label(new Rect(Screen.width * .5f - 140f, Screen.height - 78f, 280f, 36f),
             selectedInteractable.InteractionPrompt);
     }

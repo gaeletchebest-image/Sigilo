@@ -2,8 +2,12 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 
+
+
 public sealed class MissionManager : MonoBehaviour
 {
+    private const int RequiredFolderCount = 2;
+
     public enum RunState { StartMenu, Playing, Paused, Victory, Defeat }
 
     private static MissionManager instance;
@@ -31,7 +35,7 @@ public sealed class MissionManager : MonoBehaviour
     public bool IsCinematic => isCinematic;
     public bool HasFolder => hasFolder;
     public int FolderCollectionCount => folderCollectionCount;
-    public string Objective => hasFolder ? "Objetivo: Llegá a la salida" : "Objetivo: Recuperá la carpeta";
+    public string Objective => hasFolder ? "Objetivo: Llegá a la salida" : "Objetivo: Recuperá las carpetas";
 
     private void Awake()
     {
@@ -86,10 +90,13 @@ public sealed class MissionManager : MonoBehaviour
 
     public bool RegisterFolderCollected()
     {
-        if (state != RunState.Playing || isCinematic || hasFolder) return false;
-        hasFolder = true;
+        if (state != RunState.Playing || isCinematic || folderCollectionCount >= RequiredFolderCount) return false;
+
         folderCollectionCount++;
-        ShowNotice("Carpeta recuperada");
+        hasFolder = folderCollectionCount >= RequiredFolderCount;
+        ShowNotice(hasFolder
+            ? "¡Recuperaste las dos carpetas!"
+            : $"Carpeta recuperada ({folderCollectionCount}/{RequiredFolderCount})");
         ProceduralAudioFeedback.Instance?.PlayFolder();
         return true;
     }
@@ -99,7 +106,7 @@ public sealed class MissionManager : MonoBehaviour
         if (state != RunState.Playing || isCinematic) return false;
         if (!hasFolder)
         {
-            ShowNotice("Falta la carpeta");
+            ShowNotice($"Faltan {RequiredFolderCount - folderCollectionCount} carpetas");
             return false;
         }
 
@@ -170,7 +177,8 @@ public sealed class MissionManager : MonoBehaviour
 
     public void ShowMissingFolder()
     {
-        if (state == RunState.Playing) ShowNotice("Falta la carpeta");
+        if (state == RunState.Playing && !hasFolder)
+            ShowNotice($"Faltan {RequiredFolderCount - folderCollectionCount} carpetas");
     }
 
     private void ShowNotice(string message)
@@ -212,7 +220,7 @@ public sealed class MissionManager : MonoBehaviour
             GUI.Label(new Rect(centerX - 190f, centerY - 75f, 380f, 90f),
                 "WASD mover  •  Mouse mirar\nE interactuar  •  Esc pausar");
             if (GUI.Button(new Rect(centerX - 100f, centerY + 40f, 200f, 48f), "Jugar")) BeginGame();
-            GUI.Label(new Rect(centerX - 150f, centerY + 100f, 300f, 32f), "Recuperá la carpeta y escapá");
+            GUI.Label(new Rect(centerX - 150f, centerY + 100f, 300f, 32f), "Recuperá las 2 carpetas y escapá");
             GUI.skin.label.fontSize = previousLabelFont;
             GUI.skin.box.fontSize = previousBoxFont;
             GUI.skin.button.fontSize = previousButtonFont;
@@ -221,6 +229,9 @@ public sealed class MissionManager : MonoBehaviour
         }
 
         GUI.Box(new Rect(centerX - 185f, 12f, 370f, 42f), Objective);
+        GUI.Box(new Rect(centerX - 90f, 58f, 180f, 32f),
+            $"Carpetas: {folderCollectionCount}/{RequiredFolderCount}");
+
 
         if (Time.unscaledTime < noticeUntil && state == RunState.Playing)
             GUI.Box(new Rect(Screen.width / scale * .5f - 150f, Screen.height / scale - 126f, 300f, 38f), notice);
@@ -230,7 +241,7 @@ public sealed class MissionManager : MonoBehaviour
             string title = state == RunState.Paused ? "PAUSA" :
                 state == RunState.Victory ? "MISIÓN COMPLETADA" : "CAPTURADO";
             string detail = state == RunState.Paused ? "Esc — continuar" :
-                state == RunState.Victory ? "Recuperaste la carpeta y escapaste." : "Un guardia te alcanzó.";
+                state == RunState.Victory ? "Recuperaste las 2 carpetas y escapaste." : "Un guardia te alcanzó.";
             GUI.Box(new Rect(centerX - 190f, centerY - 95f, 380f, 190f), title);
             GUI.Label(new Rect(centerX - 165f, centerY - 58f, 330f, 34f), detail);
 
