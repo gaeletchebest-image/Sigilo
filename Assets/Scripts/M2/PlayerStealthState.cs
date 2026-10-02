@@ -44,6 +44,21 @@ public sealed class PlayerStealthState : MonoBehaviour
         if (IsHidden || isTransitioning || hideout == null || hideout.IsOccupied || playerController == null)
             return false;
 
+        GuardBrain nearestGuardThatSawEntry = null;
+        float nearestGuardDistance = float.PositiveInfinity;
+        GuardBrain[] guards = FindObjectsByType<GuardBrain>(FindObjectsSortMode.None);
+        foreach (GuardBrain guard in guards)
+        {
+            if (guard == null || !guard.CanSeePlayerEnteringHideout(this)) continue;
+            float distance = (guard.transform.position - transform.position).sqrMagnitude;
+            if (distance < nearestGuardDistance)
+            {
+                nearestGuardDistance = distance;
+                nearestGuardThatSawEntry = guard;
+            }
+        }
+        nearestGuardThatSawEntry?.InvestigateHideoutEntry(hideout);
+
         currentHideout = hideout;
         IsHidden = true;
         isTransitioning = true;
@@ -58,7 +73,7 @@ public sealed class PlayerStealthState : MonoBehaviour
         body.isKinematic = true;
         capsule.enabled = false;
         playerController.SetShelterMode(true);
-        hideout.NotifyPlayerEntered();
+        hideout.NotifyPlayerEntered(this);
         StartCoroutine(EnterHideoutSequence(hideout));
         return true;
     }
@@ -68,6 +83,7 @@ public bool ExitHideout()
         if (!IsHidden || isTransitioning || currentHideout == null) return false;
 
         isTransitioning = true;
+        currentHideout.NotifyPlayerExitStarted();
         StartCoroutine(ExitHideoutSequence(currentHideout));
         return true;
     }
@@ -82,6 +98,7 @@ public bool ExitHideout()
         playerController.SetShelterMode(true, hideout.CameraAnchor);
         yield return hideout.AnimateDoor(false, doorAnimationDuration);
         isTransitioning = false;
+        hideout.NotifyPlayerEntryFinished();
     }
 
     private IEnumerator ExitHideoutSequence(HideoutInteractable hideout)
@@ -103,6 +120,34 @@ public bool ExitHideout()
         capsule.enabled = capsuleWasEnabled;
         yield return hideout.AnimateDoor(false, doorAnimationDuration);
         IsHidden = false;
+        currentHideout = null;
+        hideout.NotifyPlayerExited();
+        Physics.SyncTransforms();
+        playerController.SetMovementLocked(false);
+        isTransitioning = false;
+    }
+
+    public IEnumerator EjectFromHideoutForCapture(HideoutInteractable hideout, float duration)
+    {
+        if (!IsHidden || isTransitioning || hideout == null || currentHideout != hideout)
+            yield break;
+
+        isTransitioning = true;
+        hideout.NotifyPlayerExitStarted();
+        IsHidden = false;
+        for (int i = 0; i < renderers.Length; i++) renderers[i].enabled = rendererWasEnabled[i];
+        playerController.SetShelterMode(false);
+        playerController.SetMovementLocked(true);
+        yield return MovePlayerTo(hideout.ExitPoint, duration);
+
+        body.isKinematic = bodyWasKinematic;
+        if (!body.isKinematic)
+        {
+            body.linearVelocity = Vector3.zero;
+            body.angularVelocity = Vector3.zero;
+        }
+
+        capsule.enabled = capsuleWasEnabled;
         currentHideout = null;
         hideout.NotifyPlayerExited();
         Physics.SyncTransforms();

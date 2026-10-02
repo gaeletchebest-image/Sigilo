@@ -1,9 +1,10 @@
+using System.Collections;
 using UnityEngine;
 
 public sealed class GuardBrain : MonoBehaviour
 {
     // Keep the existing numeric values stable because state is serialized in scenes.
-    public enum State { Patrol, Investigate, Chase, Search }
+    public enum State { Patrol, Investigate, Chase, Search, CheckHideout }
 
     [SerializeField] private GuardPerception perception;
     [SerializeField] private GuardSuspicion suspicion;
@@ -12,6 +13,8 @@ public sealed class GuardBrain : MonoBehaviour
     [SerializeField, Min(0f)] private float chaseMemoryDuration = 1.25f;
     [SerializeField, Min(0.1f)] private float routeFailureTimeout = 1.5f;
     [SerializeField, Min(0.1f)] private float soundAttentionDuration = 3f;
+    [SerializeField, Min(0f)] private float hideoutDoorDuration = 0.35f;
+    [SerializeField, Min(0f)] private float hideoutPullDuration = 0.35f;
 
     private Transform player;
     private PlayerStealthState playerStealth;
@@ -26,6 +29,8 @@ public sealed class GuardBrain : MonoBehaviour
     private int lastSuspicionBand;
     private State lastAudioState;
     private float soundAttentionUntil;
+    private HideoutInteractable hideoutToInspect;
+    private bool isInspectingHideout;
 
     public float Suspicion => suspicion != null ? suspicion.Value : 0f;
     public State CurrentState => state;
@@ -94,14 +99,7 @@ public sealed class GuardBrain : MonoBehaviour
                 if ((playerStealth == null || !playerStealth.IsHidden) &&
                     Vector3.Distance(transform.position, player.position) <= 1.15f)
                 {
-                    if (MissionManager.Instance != null)
-                        MissionManager.Instance.RegisterCapture();
-                    else
-                    {
-                        gameMessage = "CAPTURADO — reiniciá la escena para volver a intentar";
-                        messageUntil = Time.time + 1000f;
-                        Time.timeScale = 0f;
-                    }
+                    RegisterCapture();
                 }
             }
             else if (Time.time - lastContactAt > chaseMemoryDuration)
@@ -109,6 +107,42 @@ public sealed class GuardBrain : MonoBehaviour
                 BeginInvestigation(searchDuration);
             }
             else navigation.SetDestination(lastKnown);
+            return;
+        }
+
+        if (state == State.CheckHideout)
+        {
+            if (hasContact)
+            {
+                hideoutToInspect = null;
+                BeginInvestigation(searchDuration);
+                navigation.SetDestination(lastKnown);
+                return;
+            }
+
+            if (hideoutToInspect == null)
+            {
+                FinishHideoutInspection(null);
+                return;
+            }
+
+            navigation.SetSearchMode();
+            if (navigation.DestinationFailed)
+            {
+                if (routeFailureSince < 0f) routeFailureSince = Time.time;
+                if (Time.time - routeFailureSince >= routeFailureTimeout)
+                {
+                    FinishHideoutInspection(hideoutToInspect);
+                    return;
+                }
+            }
+            else routeFailureSince = -1f;
+
+            if (navigation.AtDestination && !isInspectingHideout)
+            {
+                navigation.StopAtDestination();
+                StartCoroutine(InspectHideout(hideoutToInspect));
+            }
             return;
         }
 
@@ -152,6 +186,78 @@ public sealed class GuardBrain : MonoBehaviour
     }
 
     public void SetProximity(bool value) => perception?.SetProximity(value);
+
+    public bool CanSeePlayerEnteringHideout(PlayerStealthState candidate)
+    {
+        return candidate != null && candidate.transform == player && perception != null &&
+            perception.CanSeePlayer();
+    }
+
+    public void InvestigateHideoutEntry(HideoutInteractable hideout)
+    {
+        if (hideout == null || navigation == null || !navigation.SetDestination(hideout.EntryPoint.position))
+            return;
+
+        hideoutToInspect = hideout;
+        routeFailureSince = -1f;
+        isInspectingHideout = false;
+        state = State.CheckHideout;
+        navigation.SetSearchMode();
+    }
+
+    private IEnumerator InspectHideout(HideoutInteractable hideout)
+    {
+        isInspectingHideout = true;
+        while (hideout != null && hideout.IsPlayerTransitioning)
+            yield return null;
+
+        if (hideout == null)
+        {
+            FinishHideoutInspection(null);
+            yield break;
+        }
+
+        yield return hideout.AnimateDoor(true, hideoutDoorDuration);
+        if (hideout.IsOccupied && hideout.Occupant != null && hideout.Occupant.IsHidden)
+        {
+            yield return hideout.Occupant.EjectFromHideoutForCapture(hideout, hideoutPullDuration);
+            RegisterCapture();
+            FinishHideoutInspection(hideout);
+            yield break;
+        }
+
+        while (hideout.IsPlayerTransitioning)
+            yield return null;
+        yield return hideout.AnimateDoor(false, hideoutDoorDuration);
+        FinishHideoutInspection(hideout);
+    }
+
+    private void FinishHideoutInspection(HideoutInteractable inspectedHideout)
+    {
+        if (hideoutToInspect == inspectedHideout || inspectedHideout == null)
+            hideoutToInspect = null;
+        isInspectingHideout = false;
+        routeFailureSince = -1f;
+        if (state != State.CheckHideout) return;
+
+        suspicion.ResetValue();
+        lastSuspicionBand = 0;
+        state = State.Patrol;
+        navigation.ResumeNearestWaypoint();
+    }
+
+    private void RegisterCapture()
+    {
+        if (MissionManager.Instance != null)
+        {
+            MissionManager.Instance.RegisterCapture();
+            return;
+        }
+
+        gameMessage = "CAPTURADO — reiniciá la escena para volver a intentar";
+        messageUntil = Time.time + 1000f;
+        Time.timeScale = 0f;
+    }
 
     public bool InvestigateSound(Vector3 origin, float duration)
     {

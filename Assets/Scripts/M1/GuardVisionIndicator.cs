@@ -513,7 +513,8 @@ public sealed class GuardVisionIndicator : MonoBehaviour
     {
         float suspicion = brain != null ? brain.Suspicion : 0f;
         bool searching = brain != null &&
-            (brain.CurrentState == GuardBrain.State.Investigate || brain.CurrentState == GuardBrain.State.Search);
+            (brain.CurrentState == GuardBrain.State.Investigate || brain.CurrentState == GuardBrain.State.Search ||
+             brain.CurrentState == GuardBrain.State.CheckHideout);
         Color stateColor = brain != null &&
             (brain.CurrentState == GuardBrain.State.Chase || suspicion >= 100f)
             ? new Color(.9f, .12f, .1f)

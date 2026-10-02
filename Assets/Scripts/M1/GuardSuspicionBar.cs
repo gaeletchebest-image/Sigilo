@@ -89,7 +89,8 @@ public sealed class GuardSuspicionBar : MonoBehaviour
             }
         }
         fill.color = brain.CurrentState == GuardBrain.State.Chase ? new Color(.9f, .12f, .1f) :
-            brain.CurrentState == GuardBrain.State.Investigate || brain.CurrentState == GuardBrain.State.Search
+            brain.CurrentState == GuardBrain.State.Investigate || brain.CurrentState == GuardBrain.State.Search ||
+                brain.CurrentState == GuardBrain.State.CheckHideout
                 ? new Color(1f, .62f, .08f)
                 : new Color(.35f, .85f, .45f);
     }

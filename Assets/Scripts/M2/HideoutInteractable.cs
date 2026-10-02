@@ -21,6 +21,8 @@ public sealed class HideoutInteractable : ContextualInteractable
     public Transform ExitPoint => exitPoint != null ? exitPoint : transform;
     public Transform DoorPivot => doorPivot;
     public bool IsOccupied { get; private set; }
+    public PlayerStealthState Occupant { get; private set; }
+    public bool IsPlayerTransitioning { get; private set; }
     public override string InteractionPrompt => "E — esconderse";
     private Quaternion doorClosedRotation;
     private bool promptSelected;
@@ -162,6 +164,25 @@ public sealed class HideoutInteractable : ContextualInteractable
         GUI.color = previousColor;
     }
 
-    public void NotifyPlayerEntered() => IsOccupied = true;
-    public void NotifyPlayerExited() => IsOccupied = false;
+    public void NotifyPlayerEntered(PlayerStealthState player)
+    {
+        Occupant = player;
+        IsOccupied = player != null;
+        IsPlayerTransitioning = true;
+    }
+
+    public void NotifyPlayerEntryFinished() => IsPlayerTransitioning = false;
+
+    public void NotifyPlayerExitStarted()
+    {
+        IsOccupied = false;
+        IsPlayerTransitioning = true;
+    }
+
+    public void NotifyPlayerExited()
+    {
+        IsOccupied = false;
+        Occupant = null;
+        IsPlayerTransitioning = false;
+    }
 }
